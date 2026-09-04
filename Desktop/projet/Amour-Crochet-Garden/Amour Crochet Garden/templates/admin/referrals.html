@@ -1,0 +1,128 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Parrainage - Admin Amour Crochet Garden{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <h1>Liens de parrainage</h1>
+    <p class="admin-welcome">Créez des liens avec un code unique pour voir qui amène le plus de visiteurs sur le site.</p>
+    <button class="btn-primary" onclick="showReferralModal()">Créer un lien de parrainage</button>
+    <div class="referrals-list">
+        <div id="referralsContainer"></div>
+    </div>
+</div>
+
+<div id="referralModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeReferralModal()">&times;</span>
+        <h2>Créer un lien de parrainage</h2>
+        <form id="referralForm">
+            <label>Nom (affiché dans le dashboard) * <input type="text" name="name" placeholder="ex: Marie" required></label>
+            <label>Code unique * <input type="text" name="code" placeholder="ex: marie (sans espaces)" required></label>
+            <p class="settings-desc">Le lien de parrainage sera : <code id="referralUrlPreview">/?ref=...</code></p>
+            <button type="submit" class="btn-primary">Créer</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API = '/api';
+
+function escapeHtml(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+async function api(method, url, body = null, isForm = false) {
+    const opts = { method, credentials: 'include' };
+    if (body) {
+        if (isForm) opts.body = body;
+        else { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(body); }
+    }
+    const r = await fetch(url, opts);
+    if (r.status === 401) { window.location = '/admin/login'; return null; }
+    if (r.status === 403) { showToast('Session expirée — rechargez la page.', 'error'); return null; }
+    return r.json ? await r.json().catch(() => null) : null;
+}
+
+async function loadReferrals() {
+    const refs = await api('GET', API + '/referrals');
+    if (!refs) return;
+    const baseUrl = window.location.origin;
+    const html = refs.length ? refs.map(r => {
+        const name = escapeHtml(r.name);
+        const code = escapeHtml(r.code);
+        const safeCodeAttr = encodeURIComponent(r.code || '');
+        const url = `${baseUrl}/?ref=${safeCodeAttr}`;
+        return `
+        <div class="referral-card" data-id="${Number(r.id) || 0}">
+            <h3></h3>
+            <p class="referral-code">Code : <code></code></p>
+            <p class="referral-url"><a href="${url}" target="_blank" rel="noopener"></a></p>
+            <p class="referral-visits"><strong>${Number(r.visits_count) || 0}</strong> visiteur(s) amené(s)</p>
+            <div class="referral-actions">
+                <button class="btn-copy" data-url="${escapeHtml(url)}">Copier le lien</button>
+                <button class="btn-delete" data-id="${Number(r.id) || 0}">Supprimer</button>
+            </div>
+        </div>`;
+    }).join('') : '<p class="no-items">Aucun lien de parrainage. Créez-en un pour commencer.</p>';
+    const container = document.getElementById('referralsContainer');
+    container.innerHTML = html;
+    container.querySelectorAll('.referral-card').forEach((card, idx) => {
+        const r = refs[idx];
+        if (!r) return;
+        card.querySelector('h3').textContent = r.name || '';
+        card.querySelector('code').textContent = r.code || '';
+        const a = card.querySelector('.referral-url a');
+        a.textContent = `${baseUrl}/?ref=${r.code || ''}`;
+        a.href = `${baseUrl}/?ref=${encodeURIComponent(r.code || '')}`;
+        card.querySelector('.btn-copy').addEventListener('click', () => copyReferralUrl(`${baseUrl}/?ref=${r.code || ''}`));
+        card.querySelector('.btn-delete').addEventListener('click', () => deleteReferral(r.id));
+    });
+}
+
+function copyReferralUrl(url) {
+    navigator.clipboard.writeText(url).then(() => showToast('Lien copié !'));
+}
+
+async function deleteReferral(id) {
+    if (!confirm('Supprimer ce lien de parrainage ?')) return;
+    const res = await api('DELETE', API + '/referrals/' + id);
+    if (res?.ok) loadReferrals();
+}
+
+function showReferralModal() {
+    document.getElementById('referralModal').classList.add('show');
+    document.getElementById('referralForm').reset();
+}
+
+function closeReferralModal() {
+    document.getElementById('referralModal').classList.remove('show');
+}
+
+document.getElementById('referralForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const res = await api('POST', API + '/referrals', fd, true);
+    if (res && res.id) {
+        closeReferralModal();
+        loadReferrals();
+    } else if (res?.detail) {
+        showToast(res.detail, 'error');
+    }
+});
+
+document.querySelector('input[name="code"]')?.addEventListener('input', function() {
+    const code = this.value.trim().toLowerCase().replace(/\s+/g, '_') || '...';
+    document.getElementById('referralUrlPreview').textContent = window.location.origin + '/?ref=' + code;
+});
+
+loadReferrals();
+</script>
+{% endblock %}

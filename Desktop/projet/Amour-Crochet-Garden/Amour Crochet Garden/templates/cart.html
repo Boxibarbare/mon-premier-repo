@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Panier - Amour Crochet Garden{% endblock %}
+
+{% block body_class %}page-cart{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-small">
+    <div class="container">
+        <h1 class="page-title">Mon panier</h1>
+        <p class="page-subtitle">Vos créations sélectionnées, prêtes à être commandées</p>
+    </div>
+</section>
+
+<section class="section section-cart">
+    <div class="container">
+        {% if request.query_params.get('error') == 'unavailable' %}
+        <div class="alert alert-error">Certains articles ne sont plus disponibles. Votre panier a été mis à jour.</div>
+        {% elif request.query_params.get('error') == 'session' %}
+        <div class="alert alert-error">Votre session a expiré. Veuillez réessayer.</div>
+        {% endif %}
+
+        {% if cart %}
+        <div class="cart-layout">
+            <div class="cart-items">
+                {% for item in cart %}
+                <article class="cart-item">
+                    <div class="cart-item-image">
+                        {% if item.image_path %}
+                        <img src="/static/{{ item.image_path }}" alt="{{ item.name }}">
+                        {% else %}
+                        <div class="cart-item-placeholder">🧶</div>
+                        {% endif %}
+                    </div>
+                    <div class="cart-item-info">
+                        <h3 class="cart-item-name">{{ item.name }}</h3>
+                        <p class="cart-item-price">{{ "%.2f"|format(item.price) }} € × {{ item.qty }}</p>
+                    </div>
+                    <div class="cart-item-total">
+                        {{ "%.2f"|format(item.price * item.qty) }} €
+                    </div>
+                    <form action="/cart/remove/{{ item.product_id }}" method="post" class="cart-item-remove">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-outline btn-sm">Retirer</button>
+                    </form>
+                </article>
+                {% endfor %}
+            </div>
+
+            <aside class="cart-summary">
+                <div class="cart-totals">
+                    <div class="cart-totals-row">
+                        <span>Sous-total</span>
+                        <strong>{{ "%.2f"|format(subtotal) }} €</strong>
+                    </div>
+                    <div class="cart-totals-row">
+                        <span>Livraison</span>
+                        <strong>
+                            {% if shipping_fee > 0 %}
+                            {{ "%.2f"|format(shipping_fee) }} €
+                            {% else %}
+                            Offerte
+                            {% endif %}
+                        </strong>
+                    </div>
+                    <p class="cart-shipping-hint">
+                        {% if shipping_fee > 0 %}
+                        Livraison à {{ "%.2f"|format(shipping_fee_amount) }} € — offerte dès {{ "%.0f"|format(free_shipping_threshold) }} € d'achat.
+                        {% else %}
+                        Livraison offerte (commande ≥ {{ "%.0f"|format(free_shipping_threshold) }} €).
+                        {% endif %}
+                    </p>
+                    <div class="cart-totals-row cart-totals-total">
+                        <span>Total</span>
+                        <strong>{{ "%.2f"|format(total) }} €</strong>
+                    </div>
+                </div>
+                <a href="/checkout" class="btn btn-primary btn-full">Commander</a>
+                <a href="/products" class="cart-continue">Continuer mes achats</a>
+            </aside>
+        </div>
+        {% else %}
+        <div class="cart-empty">
+            <span class="cart-empty-icon" aria-hidden="true">🛒</span>
+            <p>Votre panier est vide.</p>
+            <a href="/products" class="btn btn-primary">Découvrir nos créations</a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

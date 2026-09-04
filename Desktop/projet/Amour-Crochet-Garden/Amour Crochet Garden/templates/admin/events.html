@@ -1,0 +1,179 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Événements - Admin Amour Crochet Garden{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <h1>Gestion des Événements</h1>
+    <p class="admin-welcome">Créez et gérez vos événements. L'heure est optionnelle.</p>
+    <button class="btn-primary" onclick="showEventModal()">Ajouter un événement</button>
+    <div class="events-admin-grid">
+        {% for event in events %}
+        <article class="event-admin-card" data-id="{{ event.id }}">
+            <h3>{{ event.title }}</h3>
+            {% if event.event_type_name %}<span class="event-type-badge">{{ event.event_type_name }}</span>{% endif %}
+            <p class="event-dates">
+                <strong>Début :</strong> {{ event.date_display }}
+                {% if event.date_end_display %}<br><strong>Fin :</strong> {{ event.date_end_display }}{% endif %}
+            </p>
+            <p class="event-location">{{ event.location }}</p>
+            <div class="event-flags">
+                {% if event.display %}<span class="flag-ok">Affiché</span>{% else %}<span class="flag-no">Masqué</span>{% endif %}
+            </div>
+            <div class="item-actions">
+                <button class="btn-edit" onclick="editEvent({{ event.id }})">Modifier</button>
+                <button class="btn-delete" onclick="deleteEvent({{ event.id }})">Supprimer</button>
+            </div>
+        </article>
+        {% else %}
+        <p class="no-items">Aucun événement. Cliquez sur "Ajouter un événement" pour commencer.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="eventModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeEventModal()">&times;</span>
+        <h2 id="eventModalTitle">Ajouter un événement</h2>
+        <form id="eventForm">
+            <input type="hidden" id="eventId" name="id">
+            <label>Titre * <input type="text" name="title" required placeholder="Ex: Marché de Noël"></label>
+            <label>Type d'événement
+                <input type="text" id="eventTypeInput" name="event_type" list="eventTypeSuggestions" placeholder="Ex: Marché, Brocante…" autocomplete="off">
+                <span class="field-hint">Choisissez une suggestion ou tapez un nouveau type.</span>
+            </label>
+            <datalist id="eventTypeSuggestions">
+                {% for t in event_types %}
+                <option value="{{ t.name }}"></option>
+                {% endfor %}
+            </datalist>
+
+            <div class="form-row-2">
+                <label>Date de début *
+                    <input type="date" name="date" required>
+                </label>
+                <label>Heure de début <span class="optional-tag">optionnel</span>
+                    <input type="time" name="time">
+                </label>
+            </div>
+            <div class="form-row-2">
+                <label>Date de fin <span class="optional-tag">optionnel</span>
+                    <input type="date" name="date_end">
+                </label>
+                <label>Heure de fin <span class="optional-tag">optionnel</span>
+                    <input type="time" name="time_end">
+                </label>
+            </div>
+
+            <label>Lieu * <input type="text" name="location" required placeholder="Ex: Place du marché"></label>
+            <label>Description * <textarea name="description" rows="3" required placeholder="Description de l'événement"></textarea></label>
+            <label class="checkbox-label">
+                <input type="checkbox" name="display" value="1" checked> Afficher sur le site
+            </label>
+            <button type="submit" class="btn-primary">Enregistrer</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API = '/api';
+const eventsData = {{ events_data | tojson | safe }} || [];
+
+function api(method, url, body = null) {
+    const opts = { method, credentials: 'include' };
+    if (body) { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(body); }
+    return fetch(url, opts).then(r => {
+        if (r.status === 401) { window.location = '/admin/login'; return null; }
+        return r.json ? r.json().catch(() => null) : null;
+    });
+}
+
+function showEventModal(id = null) {
+    document.getElementById('eventModal').classList.add('show');
+    document.getElementById('eventModalTitle').textContent = id ? 'Modifier l\'événement' : 'Ajouter un événement';
+    document.getElementById('eventId').value = id || '';
+    if (!id) {
+        document.getElementById('eventForm').reset();
+        document.getElementById('eventTypeInput').value = '';
+        document.querySelector('#eventForm [name="display"]').checked = true;
+    }
+}
+
+function closeEventModal() { document.getElementById('eventModal').classList.remove('show'); }
+
+function splitDateTime(iso) {
+    if (!iso) return { date: '', time: '' };
+    const dt = new Date(iso);
+    if (Number.isNaN(dt.getTime())) return { date: '', time: '' };
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const d = String(dt.getDate()).padStart(2, '0');
+    const hh = String(dt.getHours()).padStart(2, '0');
+    const mm = String(dt.getMinutes()).padStart(2, '0');
+    const hasTime = !(dt.getHours() === 0 && dt.getMinutes() === 0);
+    return {
+        date: `${y}-${m}-${d}`,
+        time: hasTime ? `${hh}:${mm}` : '',
+    };
+}
+
+function editEvent(id) {
+    const ev = eventsData.find(x => x.id === id);
+    if (!ev) return;
+    showEventModal(id);
+    document.querySelector('#eventForm [name="title"]').value = ev.title;
+    const start = splitDateTime(ev.date);
+    const end = splitDateTime(ev.date_end);
+    document.querySelector('#eventForm [name="date"]').value = start.date;
+    document.querySelector('#eventForm [name="time"]').value = start.time;
+    document.querySelector('#eventForm [name="date_end"]').value = end.date;
+    document.querySelector('#eventForm [name="time_end"]').value = end.time;
+    document.querySelector('#eventForm [name="location"]').value = ev.location || '';
+    document.querySelector('#eventForm [name="description"]').value = ev.description || '';
+    document.querySelector('#eventForm [name="display"]').checked = ev.display !== false;
+    document.getElementById('eventTypeInput').value = ev.event_type_name || '';
+}
+
+async function deleteEvent(id) {
+    if (!confirm('Supprimer cet événement ?')) return;
+    await api('DELETE', `${API}/events/${id}`);
+    location.reload();
+}
+
+document.getElementById('eventForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('eventId').value;
+    const form = e.target;
+    const fd = new FormData();
+    fd.append('title', form.title.value);
+    fd.append('date', form.date.value);
+    if (form.time.value) fd.append('time', form.time.value);
+    if (form.date_end.value) {
+        fd.append('date_end', form.date_end.value);
+        if (form.time_end.value) fd.append('time_end', form.time_end.value);
+    } else {
+        fd.append('date_end', '');
+    }
+    fd.append('location', form.location.value);
+    fd.append('description', form.description.value);
+    fd.append('display', form.display.checked ? 'true' : 'false');
+    const typeVal = document.getElementById('eventTypeInput').value.trim();
+    if (typeVal) fd.append('event_type', typeVal);
+    const url = id ? `${API}/events/${id}` : `${API}/events`;
+    const r = await fetch(url, { method: id ? 'PUT' : 'POST', body: fd, credentials: 'include' });
+    if (r.status === 401) { window.location = '/admin/login'; return; }
+    if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        showToast('Erreur: ' + (err.detail || r.statusText || 'Erreur serveur'), 'error');
+        return;
+    }
+    closeEventModal();
+    location.reload();
+};
+
+document.querySelector('#eventModal .modal-close').onclick = closeEventModal;
+window.onclick = (e) => { if (e.target.classList.contains('modal')) e.target.classList.remove('show'); };
+</script>
+{% endblock %}

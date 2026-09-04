@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block html_class %}{% if request.query_params.get('feedback') %}no-smooth-scroll{% endif %}{% endblock %}
+{% block body_class %}page-home{% endblock %}
+
+{% block content %}
+    <section class="hero">
+        <div class="hero-bg">
+            <div class="hero-bg-image" data-hero-image></div>
+            <div class="hero-overlay"></div>
+        </div>
+        <div class="hero-content">
+            <p class="hero-badge">Créations faites main</p>
+            <h1 class="hero-title">Amour Crochet Garden</h1>
+            <p class="hero-subtitle">Des pièces uniques au crochet, confectionnées avec passion.</p>
+            <div class="hero-ctas">
+                <a href="/#products" class="btn btn-primary">Découvrir nos créations</a>
+                <a href="/events" class="btn btn-outline">Voir nos événements</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="events" class="section section-events reveal">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">À venir</span>
+                <h2 class="section-title">Nos Événements</h2>
+                <p class="section-subtitle">Retrouvez-nous aux brocantes, marchés et ateliers</p>
+            </div>
+            <div class="events-grid events-grid-home">
+                {% for event in events %}
+                <article class="event-card {% if loop.index == 1 %}event-card-featured{% endif %}">
+                    {% if event.event_type_name %}<span class="event-type">{{ event.event_type_name }}</span>{% endif %}
+                    <h3 class="event-card-title">{{ event.title }}</h3>
+                    <div class="event-meta">
+                        <span class="event-date">{{ event.date_display }}</span>
+                        <span class="event-location">{{ event.location }}</span>
+                    </div>
+                    <p class="event-desc">{{ event.description[:120] }}{% if event.description|length > 120 %}...{% endif %}</p>
+                </article>
+                {% else %}
+                <p class="empty-state">Aucun événement à venir pour le moment.</p>
+                {% endfor %}
+            </div>
+            <div class="section-cta">
+                <a href="/events" class="btn btn-secondary">Voir tous les événements</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="products" class="section section-products reveal">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Collection</span>
+                <h2 class="section-title">Nos Créations</h2>
+                <p class="section-subtitle">Pièces uniques confectionnées au crochet — chaque création est une œuvre à part.</p>
+            </div>
+
+            {% if products %}
+            {# Mise en avant : premier produit en vedette #}
+            {% set featured = products[0] %}
+            <article class="product-spotlight" data-product-id="{{ featured.id }}">
+                <a href="#" class="product-spotlight-link product-card-link"
+                   data-product-id="{{ featured.id }}"
+                   data-name="{{ featured.name|e }}"
+                   data-description="{{ featured.description|e }}"
+                   data-price="{{ "%.2f"|format(featured.price) }}"
+                   data-image="{{ featured.image_path or "" }}"
+                   data-category="{{ featured.category_name or "" }}"
+                   data-in-stock="{{ featured.in_stock|lower }}"
+                   data-stock-quantity="{{ featured.stock_quantity or "" }}">
+                    <div class="spotlight-image">
+                        {% if featured.image_path %}
+                        <img src="/static/{{ featured.image_path }}" alt="{{ featured.name }}" loading="eager">
+                        {% else %}
+                        <div class="product-placeholder"><span class="placeholder-icon">🧶</span></div>
+                        {% endif %}
+                        <div class="spotlight-overlay">
+                            <span class="spotlight-cta">Découvrir</span>
+                        </div>
+                    </div>
+                    <div class="spotlight-content">
+                        {% if featured.category_name %}<span class="product-category">{{ featured.category_name }}</span>{% endif %}
+                        <h3 class="spotlight-title">{{ featured.name }}</h3>
+                        <p class="spotlight-desc">{{ featured.description[:140] }}{% if featured.description|length > 140 %}...{% endif %}</p>
+                        <p class="spotlight-price">{{ "%.2f"|format(featured.price) }} €</p>
+                    </div>
+                </a>
+            </article>
+
+            {# Grille des autres produits #}
+            {% if products|length > 1 %}
+            <div class="products-showcase">
+                <h3 class="showcase-title">Autres créations</h3>
+                <div class="products-grid products-grid-showcase">
+                    {% for product in products[1:] %}
+                    <article class="product-card product-card-showcase">
+                        <a href="#" class="product-card-link"
+                           data-product-id="{{ product.id }}"
+                           data-name="{{ product.name|e }}"
+                           data-description="{{ product.description|e }}"
+                           data-price="{{ "%.2f"|format(product.price) }}"
+                           data-image="{{ product.image_path or "" }}"
+                           data-category="{{ product.category_name or "" }}"
+                           data-in-stock="{{ product.in_stock|lower }}"
+                           data-stock-quantity="{{ product.stock_quantity or "" }}">
+                            <div class="product-image-wrap">
+                                {% if product.image_path %}
+                                <img src="/static/{{ product.image_path }}" alt="{{ product.name }}" class="product-image" loading="lazy">
+                                {% else %}
+                                <div class="product-placeholder"><span class="placeholder-icon">🧶</span></div>
+                                {% endif %}
+                                <span class="product-overlay">Voir</span>
+                            </div>
+                            <div class="product-card-body">
+                                {% if product.category_name %}<span class="product-category">{{ product.category_name }}</span>{% endif %}
+                                <h3 class="product-name">{{ product.name }}</h3>
+                                <p class="product-price">{{ "%.2f"|format(product.price) }} €</p>
+                            </div>
+                        </a>
+                    </article>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            {% else %}
+            <p class="empty-state">Aucun produit pour le moment.</p>
+            {% endif %}
+
+            <div class="section-cta">
+                <a href="/products" class="btn btn-secondary">Explorer le catalogue complet</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="about" class="section section-about reveal">
+        <div class="container">
+            <div class="about-content">
+                <h2 class="section-title">Notre Histoire</h2>
+                <p class="intro-text">
+                    {{ settings.intro_text or "Bienvenue chez Amour Crochet Garden. Nous imaginons et confectionnons des pièces uniques au crochet, avec soin et sensibilité. Découvrez le catalogue, suivez nos événements, et laissez-vous séduire par l’artisanat fait main." }}
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact" class="section section-contact reveal">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">Contact</span>
+                <h2 class="section-title">Restons en contact</h2>
+                <p class="section-subtitle">Une question, une envie particulière&nbsp;? Écrivez-nous, nous vous répondons avec plaisir.</p>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-actions">
+                    {% for link in settings.social_links_parsed or [] %}
+                    {% if link.name and link.url %}
+                    <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer" class="social-btn" title="{{ link.name }}">
+                        {{ link.name }}
+                    </a>
+                    {% endif %}
+                    {% endfor %}
+                    <a href="mailto:{{ settings.email or settings.contact_email or 'contact@amourcrochetgarden.fr' }}" class="btn btn-primary">Nous écrire</a>
+                </div>
+                {% if request.query_params.get('feedback') == 'sent' %}
+                <div class="alert alert-success">
+                    Merci&nbsp;! Votre message a bien été envoyé. Nous vous répondrons rapidement.
+                </div>
+                {% endif %}
+                {% if request.query_params.get('feedback') == 'error' %}
+                <div class="alert alert-error">
+                    Une erreur est survenue. Vérifiez vos informations et réessayez.
+                </div>
+                {% endif %}
+                {% if request.query_params.get('feedback') == 'rate_limit' %}
+                <div class="alert alert-error">
+                    Trop de messages envoyés. Veuillez réessayer dans une heure.
+                </div>
+                {% endif %}
+                <form action="/feedback" method="post" class="contact-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div class="honeypot" aria-hidden="true">
+                        <label for="website">Ne pas remplir</label>
+                        <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                    </div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label for="contact_name">Votre nom</label>
+                            <input type="text" id="contact_name" name="name" placeholder="Camille Martin" required maxlength="100" autocomplete="name">
+                        </div>
+                        <div class="field">
+                            <label for="contact_email">Votre e-mail</label>
+                            <input type="email" id="contact_email" name="email" placeholder="vous@email.fr" required maxlength="254" autocomplete="email">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="contact_message">Votre message</label>
+                        <textarea id="contact_message" name="message" placeholder="Bonjour, je souhaiterais…" rows="5" required maxlength="2000"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">Envoyer le message</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    {# Product quick-view modal #}
+    <div id="productModal" class="modal" role="dialog" aria-labelledby="modalTitle" aria-modal="true" hidden>
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <button type="button" class="modal-close" aria-label="Fermer">&times;</button>
+            <div class="modal-body">
+                <div class="modal-image-wrap">
+                    <img id="modalProductImage" src="" alt="" class="modal-product-image">
+                    <div id="modalProductPlaceholder" class="modal-placeholder" style="display:none;"><span>🧶</span></div>
+                </div>
+                <div class="modal-info">
+                    <span id="modalProductCategory" class="product-category"></span>
+                    <h2 id="modalProductName" class="modal-product-name"></h2>
+                    <p id="modalProductDescription" class="modal-product-desc"></p>
+                    <p id="modalProductPrice" class="modal-product-price"></p>
+                    <p id="modalProductStock" class="modal-product-stock" style="display:none;"></p>
+                    <form action="/cart/add" method="post" class="modal-add-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="product_id" id="modalProductId" value="">
+                        <input type="hidden" name="qty" value="1">
+                        <button type="submit" id="modalAddToCartBtn" class="btn btn-primary btn-full">Ajouter au panier</button>
+                    </form>
+                    <a id="modalProductCta" href="mailto:{{ settings.email or settings.contact_email or 'contact@amourcrochetgarden.fr' }}?subject=Commande - " class="btn btn-outline btn-full modal-contact-link">Ou commander par e-mail</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const modal = document.getElementById('productModal');
+    const backdrop = modal?.querySelector('.modal-backdrop');
+    const closeBtn = modal?.querySelector('.modal-close');
+    const links = document.querySelectorAll('.product-card-link');
+
+    function openModal(link) {
+        if (!modal || !link) return;
+        modal.classList.remove('is-closing');
+        modal.classList.add('is-opening');
+        const productId = link.getAttribute('data-product-id') || '';
+        const name = link.getAttribute('data-name') || '';
+        const description = link.getAttribute('data-description') || '';
+        const price = link.getAttribute('data-price') || '';
+        const image = link.getAttribute('data-image') || '';
+        const category = link.getAttribute('data-category') || '';
+        const inStock = link.getAttribute('data-in-stock') !== 'false';
+        const stockQty = link.getAttribute('data-stock-quantity') || '';
+        const idEl = modal.querySelector('#modalProductId');
+        if (idEl) idEl.value = productId;
+        modal.querySelector('#modalProductName').textContent = name;
+        modal.querySelector('#modalProductDescription').textContent = description;
+        modal.querySelector('#modalProductPrice').textContent = price ? price + ' €' : '';
+        const catEl = modal.querySelector('#modalProductCategory');
+        catEl.textContent = category;
+        catEl.style.display = category ? 'inline-block' : 'none';
+        const imgEl = modal.querySelector('#modalProductImage');
+        const placeholderEl = modal.querySelector('#modalProductPlaceholder');
+        if (image) {
+            imgEl.src = '/static/' + image;
+            imgEl.alt = name;
+            imgEl.style.display = 'block';
+            placeholderEl.style.display = 'none';
+        } else {
+            imgEl.style.display = 'none';
+            placeholderEl.style.display = 'flex';
+        }
+        const cta = modal.querySelector('#modalProductCta');
+        cta.href = 'mailto:{{ settings.email or settings.contact_email or "contact@amourcrochetgarden.fr" }}?subject=Commande - ' + encodeURIComponent(name);
+        const addBtn = modal.querySelector('#modalAddToCartBtn');
+        const stockEl = modal.querySelector('#modalProductStock');
+        if (inStock) {
+            addBtn.disabled = false;
+            addBtn.textContent = 'Ajouter au panier';
+            stockEl.style.display = stockQty ? 'block' : 'none';
+            stockEl.textContent = stockQty ? stockQty + ' en stock' : '';
+        } else {
+            addBtn.disabled = true;
+            addBtn.textContent = 'Rupture de stock';
+            stockEl.style.display = 'block';
+            stockEl.textContent = 'Rupture de stock';
+        }
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        requestAnimationFrame(function() { modal.classList.remove('is-opening'); });
+    }
+
+    function closeModal() {
+        if (!modal) return;
+        modal.classList.add('is-closing');
+        setTimeout(function() {
+            modal.hidden = true;
+            modal.classList.remove('is-closing');
+            document.body.style.overflow = '';
+        }, 250);
+    }
+
+    links.forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            openModal(this);
+        });
+    });
+    backdrop?.addEventListener('click', closeModal);
+    closeBtn?.addEventListener('click', closeModal);
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+
+    var addForm = document.querySelector('#productModal .modal-add-form');
+    if (addForm) {
+        addForm.addEventListener('submit', function(e) {
+            var btn = addForm.querySelector('button[type="submit"]');
+            if (btn && btn.disabled) { e.preventDefault(); return; }
+            e.preventDefault();
+            var fd = new FormData(addForm);
+            if (btn) btn.disabled = true;
+            fetch('/cart/add', { method: 'POST', body: fd, credentials: 'include', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(r) {
+                    if (r.headers.get('content-type') && r.headers.get('content-type').includes('json')) return r.json();
+                    window.location = '/cart';
+                })
+                .then(function(data) {
+                    if (data && data.ok) {
+                        if (window.showToast) showToast(data.message || 'Ajouté au panier');
+                        if (window.updateCartBadge) updateCartBadge();
+                        closeModal();
+                    } else if (data && !data.ok) window.location = '/cart';
+                })
+                .catch(function() { window.location = '/cart'; })
+                .finally(function() { if (btn) btn.disabled = false; });
+        });
+    }
+})();
+</script>
+{% endblock %}

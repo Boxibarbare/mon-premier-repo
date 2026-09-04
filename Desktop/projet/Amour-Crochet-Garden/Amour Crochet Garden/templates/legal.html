@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - Amour Crochet Garden{% endblock %}
+
+{% block body_class %}page-legal{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-small">
+    <div class="container">
+        <h1 class="page-title">{{ page_title }}</h1>
+        <p class="page-subtitle">{{ page_subtitle }}</p>
+    </div>
+</section>
+
+<section class="section section-legal">
+    <div class="container legal-wrap">
+        <article class="legal-content">
+            {{ content | safe }}
+        </article>
+        <aside class="legal-nav" aria-label="Pages d'information">
+            <h2>Informations</h2>
+            <a href="/faq" class="{% if active == 'faq' %}is-active{% endif %}">FAQ</a>
+            <a href="/livraison" class="{% if active == 'livraison' %}is-active{% endif %}">Livraison</a>
+            <a href="/retours" class="{% if active == 'retours' %}is-active{% endif %}">Retours &amp; échanges</a>
+            <a href="/confidentialite" class="{% if active == 'confidentialite' %}is-active{% endif %}">Confidentialité</a>
+            <a href="/cookies" class="{% if active == 'cookies' %}is-active{% endif %}">Cookies</a>
+            <a href="/mentions-legales" class="{% if active == 'mentions' %}is-active{% endif %}">Mentions légales</a>
+        </aside>
+    </div>
+</section>
+{% endblock %}

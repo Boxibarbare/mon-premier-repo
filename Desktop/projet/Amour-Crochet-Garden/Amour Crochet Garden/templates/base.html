@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="fr" class="{% block html_class %}{% endblock %}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Amour Crochet Garden — créations au crochet uniques, faites main avec amour. Catalogue, événements et commande en ligne.">
+    <title>{% block title %}Amour Crochet Garden{% endblock %}</title>
+    <link rel="icon" href="/static/img/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon-32.png">
+    <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css?v=5">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    <a href="#main" class="skip-link">Aller au contenu</a>
+
+    <header class="site-header">
+        <div class="header-inner">
+            <a href="/" class="logo">
+                <img src="/static/img/logo.png" alt="Amour Crochet Garden" class="logo-img" width="48" height="48">
+                <span class="logo-text">Amour Crochet Garden</span>
+            </a>
+            <button class="nav-toggle" aria-label="Menu" aria-expanded="false" type="button">
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+            </button>
+            <nav class="nav" role="navigation" aria-label="Navigation principale">
+                <div class="nav-overlay" id="navOverlay"></div>
+                <ul class="nav-links">
+                    <li><a href="/products">Catalogue</a></li>
+                    <li><a href="/events">Événements</a></li>
+                    <li><a href="/#about">À propos</a></li>
+                    <li><a href="/#contact">Contact</a></li>
+                    <li><a href="/faq">FAQ</a></li>
+                    <li><a href="/cart" class="nav-cart" title="Panier"><span class="nav-cart-icon">🛒</span><span class="nav-cart-text">Panier</span><span class="nav-cart-badge" id="cartBadge" aria-hidden="true"></span></a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <img src="/static/img/logo.png" alt="" class="footer-logo-img" width="40" height="40">
+                <span>Amour Crochet Garden</span>
+            </div>
+            {% set socials = footer_social if footer_social is defined else (settings.social_links_parsed if settings is defined and settings.social_links_parsed is defined else []) %}
+            {% if socials %}
+            <div class="footer-social">
+                {% for link in socials %}
+                <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer" class="footer-social-link">{{ link.name }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <nav class="footer-nav" aria-label="Liens utiles">
+                <a href="/products">Catalogue</a>
+                <a href="/events">Événements</a>
+                <a href="/faq">FAQ</a>
+                <a href="/livraison">Livraison</a>
+                <a href="/retours">Retours</a>
+                <a href="/#contact">Contact</a>
+            </nav>
+            <nav class="footer-legal" aria-label="Informations légales">
+                <a href="/confidentialite">Confidentialité</a>
+                <a href="/cookies">Cookies</a>
+                <a href="/mentions-legales">Mentions légales</a>
+                <a href="#" data-open-cookie-settings>Gérer les cookies</a>
+            </nav>
+            <p class="footer-copy">© {{ current_year() }} Amour Crochet Garden. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <div id="cookieBanner" class="cookie-banner" role="dialog" aria-labelledby="cookieBannerTitle" aria-describedby="cookieBannerText" hidden>
+        <div class="cookie-banner-inner">
+            <div class="cookie-banner-copy">
+                <h2 id="cookieBannerTitle" class="cookie-banner-title">Cookies &amp; confidentialité</h2>
+                <p id="cookieBannerText" class="cookie-banner-text">
+                    Nous utilisons des cookies nécessaires au fonctionnement du site (panier, sécurité).
+                    Avec votre accord, nous mesurons aussi la fréquentation pour améliorer l’expérience.
+                    <a href="/cookies">En savoir plus</a>
+                </p>
+            </div>
+            <div class="cookie-banner-actions">
+                <button type="button" class="btn btn-outline cookie-btn" id="cookieRejectOptional">Refuser</button>
+                <button type="button" class="btn btn-outline cookie-btn" id="cookieCustomize">Personnaliser</button>
+                <button type="button" class="btn btn-primary cookie-btn" id="cookieAcceptAll">Tout accepter</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cookieModal" class="cookie-modal" role="dialog" aria-modal="true" aria-labelledby="cookieModalTitle" hidden>
+        <div class="cookie-modal-panel">
+            <button type="button" class="cookie-modal-close" id="cookieModalClose" aria-label="Fermer">×</button>
+            <h2 id="cookieModalTitle">Préférences cookies</h2>
+            <div class="cookie-pref">
+                <div>
+                    <strong>Nécessaires</strong>
+                    <p>Session, panier, sécurité. Toujours actifs.</p>
+                </div>
+                <span class="cookie-pref-badge">Obligatoire</span>
+            </div>
+            <div class="cookie-pref">
+                <div>
+                    <strong>Mesure d’audience</strong>
+                    <p>Statistiques de pages vues pour améliorer le site.</p>
+                </div>
+                <label class="cookie-switch">
+                    <input type="checkbox" id="cookieAnalyticsToggle">
+                    <span>Autoriser</span>
+                </label>
+            </div>
+            <button type="button" class="btn btn-primary btn-full" id="cookieSavePrefs">Enregistrer mes choix</button>
+        </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-hidden="true"></div>
+    {% block extra_js %}{% endblock %}
+    <script src="/static/js/cookies.js?v=1" defer></script>
+    <script>
+        (function() {
+            function updateCartBadge() {
+                fetch('/cart/json', { credentials: 'include' }).then(function(r) { return r.json(); }).then(function(d) {
+                    var badge = document.getElementById('cartBadge');
+                    if (badge && d.count > 0) { badge.textContent = d.count; badge.classList.add('has-items'); }
+                    else if (badge) { badge.textContent = ''; badge.classList.remove('has-items'); }
+                }).catch(function() {});
+            }
+            updateCartBadge();
+            window.updateCartBadge = updateCartBadge;
+            window.showToast = function(msg, type) {
+                type = type || 'success';
+                var el = document.getElementById('toast');
+                if (!el) return;
+                el.textContent = msg;
+                el.className = 'toast toast-' + (type === 'error' ? 'error' : 'success');
+                el.setAttribute('aria-hidden', 'false');
+                el.classList.add('toast-show');
+                clearTimeout(el._toastT);
+                el._toastT = setTimeout(function() {
+                    el.classList.remove('toast-show');
+                    el.setAttribute('aria-hidden', 'true');
+                }, 2500);
+            };
+        })();
+        (function() {
+            function reveal() {
+                document.querySelectorAll('.reveal').forEach(function(el) {
+                    var rect = el.getBoundingClientRect();
+                    if (rect.top < window.innerHeight - 80) el.classList.add('revealed');
+                });
+            }
+            reveal();
+            window.addEventListener('scroll', reveal, { passive: true });
+            window.addEventListener('resize', reveal);
+        })();
+    </script>
+    <script>
+        (function() {
+            var toggle = document.querySelector('.nav-toggle');
+            var links = document.querySelector('.nav-links');
+            var overlay = document.getElementById('navOverlay');
+            var scrollY = 0;
+            function closeNav() {
+                if (!links || !links.classList.contains('is-open')) return;
+                var savedScroll = scrollY;
+                toggle?.classList.remove('open');
+                toggle?.setAttribute('aria-expanded', 'false');
+                links.classList.remove('is-open');
+                overlay?.classList.remove('is-open');
+                document.documentElement.style.removeProperty('overflow');
+                document.body.style.removeProperty('position');
+                document.body.style.removeProperty('top');
+                document.body.style.removeProperty('width');
+                requestAnimationFrame(function() { window.scrollTo(0, savedScroll); });
+            }
+            function openNav() {
+                scrollY = window.scrollY;
+                toggle?.classList.add('open');
+                toggle?.setAttribute('aria-expanded', 'true');
+                links?.classList.add('is-open');
+                overlay?.classList.add('is-open');
+                document.documentElement.style.overflow = 'hidden';
+                document.body.style.position = 'fixed';
+                document.body.style.top = '-' + scrollY + 'px';
+                document.body.style.width = '100%';
+            }
+            function toggleNav() {
+                if (links?.classList.contains('is-open')) closeNav();
+                else openNav();
+            }
+            toggle?.addEventListener('click', toggleNav);
+            overlay?.addEventListener('click', closeNav);
+            links?.querySelectorAll('a').forEach(function(a) {
+                a.addEventListener('click', closeNav);
+            });
+        })();
+        window.addEventListener('scroll', function() {
+            document.querySelector('.site-header')?.classList.toggle('scrolled', window.scrollY > 20);
+        });
+    </script>
+</body>
+</html>

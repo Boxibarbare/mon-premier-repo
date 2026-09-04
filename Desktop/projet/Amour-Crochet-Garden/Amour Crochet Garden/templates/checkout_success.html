@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}{% if payment_confirmed %}Paiement confirmé{% else %}Paiement{% endif %} - Amour Crochet Garden{% endblock %}
+
+{% block body_class %}page-checkout-success{% endblock %}
+
+{% block content %}
+<section class="section section-success">
+    <div class="container">
+        <div class="success-content">
+            {% if payment_confirmed %}
+            <div class="success-icon">✓</div>
+            <h1 class="success-title">Merci pour votre commande !</h1>
+            <p class="success-message">
+                Votre paiement a bien été enregistré. Nous préparons maintenant votre commande avec soin.
+                {% if email_sent and customer_email %}
+                Un e-mail de confirmation a été envoyé à <strong>{{ customer_email }}</strong>.
+                {% elif customer_email %}
+                Nous avons bien noté votre adresse <strong>{{ customer_email }}</strong>.
+                {% endif %}
+                Nous vous recontacterons très bientôt pour organiser la livraison ou le retrait.
+            </p>
+            {% if order_reference %}
+            <p class="success-reference">Référence de commande&nbsp;: <strong>{{ order_reference }}</strong></p>
+            {% endif %}
+            {% if mock_mode %}
+            <p class="success-reference success-dev-note">Mode développement actif (paiement / e-mails de test).</p>
+            {% endif %}
+            {% else %}
+            <div class="success-icon">…</div>
+            <h1 class="success-title">Confirmation en cours</h1>
+            <p class="success-message">
+                Si vous avez bien finalisé le paiement, la confirmation peut prendre quelques instants.
+                En cas de doute, contactez-nous avec votre preuve de paiement et, si possible, la référence affichée sur votre reçu.
+            </p>
+            {% endif %}
+            <a href="/products" class="btn btn-primary">Retour au catalogue</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

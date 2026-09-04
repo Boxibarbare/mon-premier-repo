@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Livraison - Amour Crochet Garden{% endblock %}
+
+{% block body_class %}page-checkout{% endblock %}
+
+{% block content %}
+<section class="checkout-page">
+    <div class="checkout-atmosphere" aria-hidden="true"></div>
+    <div class="container checkout-shell">
+        <nav class="checkout-steps" aria-label="Étapes de commande">
+            <a href="/cart" class="checkout-step">
+                <span class="checkout-step-num">1</span>
+                <span class="checkout-step-label">Panier</span>
+            </a>
+            <span class="checkout-step-sep" aria-hidden="true"></span>
+            <span class="checkout-step is-active">
+                <span class="checkout-step-num">2</span>
+                <span class="checkout-step-label">Livraison</span>
+            </span>
+            <span class="checkout-step-sep" aria-hidden="true"></span>
+            <span class="checkout-step">
+                <span class="checkout-step-num">3</span>
+                <span class="checkout-step-label">Paiement</span>
+            </span>
+        </nav>
+
+        <header class="checkout-intro">
+            <p class="checkout-kicker">Presque là</p>
+            <h1 class="checkout-title">Où envoyer vos créations&nbsp;?</h1>
+            <p class="checkout-lead">Indiquez vos coordonnées, puis continuez vers le paiement sécurisé.</p>
+        </header>
+
+        {% if mock_payments or mock_emails %}
+        <div class="alert alert-info checkout-alert">
+            Mode développement :
+            {% if mock_payments %}paiement simulé{% endif %}
+            {% if mock_payments and mock_emails %} · {% endif %}
+            {% if mock_emails %}e-mails dans <code>logs/emails/</code>{% endif %}.
+        </div>
+        {% endif %}
+        {% if error == 'payment_disabled' %}
+        <div class="alert alert-error checkout-alert">Les paiements en ligne sont temporairement indisponibles. Réessayez plus tard ou contactez-nous.</div>
+        {% elif error == 'payment_error' %}
+        <div class="alert alert-error checkout-alert">Une erreur est survenue lors du paiement. Veuillez réessayer.</div>
+        {% elif error == 'session' %}
+        <div class="alert alert-error checkout-alert">Votre session a expiré. Veuillez réessayer.</div>
+        {% elif error == 'contact' %}
+        <div class="alert alert-error checkout-alert">Merci de renseigner tous les champs obligatoires.</div>
+        {% elif error == 'rate_limit' %}
+        <div class="alert alert-error checkout-alert">Trop de tentatives. Veuillez patienter un moment avant de réessayer.</div>
+        {% endif %}
+
+        <div class="checkout-grid">
+            <form action="/checkout" method="post" class="checkout-form" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                <section class="checkout-panel checkout-panel-identity">
+                    <div class="checkout-panel-head">
+                        <h2>Vos informations</h2>
+                        <p>Pour la confirmation et le suivi de commande.</p>
+                    </div>
+                    <div class="checkout-fields">
+                        <div class="field-pair">
+                            <div class="field">
+                                <label for="customer_first_name">Prénom</label>
+                                <input type="text" id="customer_first_name" name="customer_first_name" required maxlength="120" autocomplete="given-name" placeholder="Camille">
+                            </div>
+                            <div class="field">
+                                <label for="customer_last_name">Nom</label>
+                                <input type="text" id="customer_last_name" name="customer_last_name" required maxlength="120" autocomplete="family-name" placeholder="Martin">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="customer_email">Adresse e-mail</label>
+                            <input type="email" id="customer_email" name="customer_email" required maxlength="254" autocomplete="email" placeholder="vous@email.fr">
+                        </div>
+                        <div class="field">
+                            <label for="customer_phone">Téléphone <span class="field-optional">optionnel</span></label>
+                            <input type="tel" id="customer_phone" name="customer_phone" maxlength="50" autocomplete="tel" placeholder="06 12 34 56 78">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="checkout-panel checkout-panel-address">
+                    <div class="checkout-panel-head">
+                        <h2>Adresse de livraison</h2>
+                        <p>Livraison à {{ "%.2f"|format(shipping_fee_amount) }}&nbsp;€ — offerte dès {{ "%.0f"|format(free_shipping_threshold) }}&nbsp;€.</p>
+                    </div>
+                    <div class="checkout-fields">
+                        <div class="field">
+                            <label for="shipping_address">Adresse</label>
+                            <input type="text" id="shipping_address" name="shipping_address" required maxlength="500" autocomplete="street-address" placeholder="12 rue des Lilas">
+                        </div>
+                        <div class="field-pair">
+                            <div class="field field-postal">
+                                <label for="shipping_postal_code">Code postal</label>
+                                <input type="text" id="shipping_postal_code" name="shipping_postal_code" required maxlength="20" autocomplete="postal-code" placeholder="75011">
+                            </div>
+                            <div class="field">
+                                <label for="shipping_city">Ville</label>
+                                <input type="text" id="shipping_city" name="shipping_city" required maxlength="120" autocomplete="address-level2" placeholder="Paris">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="shipping_country">Pays</label>
+                            <input type="text" id="shipping_country" name="shipping_country" required maxlength="80" value="France" autocomplete="country-name">
+                        </div>
+                    </div>
+                </section>
+
+                <div class="checkout-actions">
+                    <a href="/cart" class="checkout-back">← Retour au panier</a>
+                    <button type="submit" class="btn btn-primary checkout-submit">
+                        {% if mock_payments %}Simuler le paiement{% else %}Continuer vers le paiement{% endif %}
+                    </button>
+                </div>
+            </form>
+
+            <aside class="checkout-summary" aria-label="Récapitulatif">
+                <h2 class="checkout-summary-title">Votre commande</h2>
+                <ul class="checkout-summary-items">
+                    {% for item in cart %}
+                    <li class="checkout-summary-item">
+                        <div class="checkout-summary-thumb">
+                            {% if item.image_path %}
+                            <img src="/static/{{ item.image_path }}" alt="">
+                            {% else %}
+                            <span aria-hidden="true">🧶</span>
+                            {% endif %}
+                            <span class="checkout-summary-qty">{{ item.qty }}</span>
+                        </div>
+                        <div class="checkout-summary-info">
+                            <span class="checkout-summary-name">{{ item.name }}</span>
+                            <span class="checkout-summary-line">{{ "%.2f"|format(item.price * item.qty) }} €</span>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <div class="checkout-summary-totals">
+                    <div class="checkout-summary-row">
+                        <span>Sous-total</span>
+                        <span>{{ "%.2f"|format(subtotal) }} €</span>
+                    </div>
+                    <div class="checkout-summary-row">
+                        <span>Livraison</span>
+                        <span>{% if shipping_fee > 0 %}{{ "%.2f"|format(shipping_fee) }} €{% else %}Offerte{% endif %}</span>
+                    </div>
+                    <div class="checkout-summary-row is-total">
+                        <span>Total</span>
+                        <span>{{ "%.2f"|format(total) }} €</span>
+                    </div>
+                </div>
+                {% if shipping_fee > 0 %}
+                <p class="checkout-summary-note">Plus que {{ "%.2f"|format(free_shipping_threshold - subtotal) }} € pour la livraison offerte.</p>
+                {% else %}
+                <p class="checkout-summary-note is-free">Livraison offerte sur cette commande.</p>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Produits - Admin Amour Crochet Garden{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <h1>Gestion des Produits</h1>
+    <button class="btn-primary" onclick="showProductModal()">Ajouter un produit</button>
+    <div class="items-grid">
+        {% for product in products %}
+        <article class="item-card" data-id="{{ product.id }}">
+            {% if product.image_path %}
+            <img src="/static/{{ product.image_path }}" alt="{{ product.name }}" class="item-image">
+            {% else %}
+            <div class="item-placeholder">?</div>
+            {% endif %}
+            {% if product.category_name %}<span class="item-badge">{{ product.category_name }}</span>{% endif %}
+            <h3>{{ product.name }}</h3>
+            <p class="item-desc">{{ product.description[:80] }}{% if product.description|length > 80 %}...{% endif %}</p>
+            <p class="item-price">{{ "%.2f"|format(product.price) }} €</p>
+            <div class="item-flags">
+                {% if product.available %}<span class="flag-ok">Disponible</span>{% else %}<span class="flag-no">Indisponible</span>{% endif %}
+                {% if product.display %}<span class="flag-ok">Affiché</span>{% else %}<span class="flag-no">Masqué</span>{% endif %}
+                {% if product.stock_quantity is not none %}<span class="flag-stock">Stock: {{ product.stock_quantity }}</span>{% else %}<span class="flag-stock">Stock: illimité</span>{% endif %}
+            </div>
+            <div class="item-actions">
+                <button class="btn-edit" onclick="editProduct({{ product.id }})">Modifier</button>
+                <button class="btn-delete" onclick="deleteProduct({{ product.id }})">Supprimer</button>
+            </div>
+        </article>
+        {% else %}
+        <p class="no-items">Aucun produit. Cliquez sur "Ajouter un produit" pour commencer.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="productModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeProductModal()">&times;</span>
+        <h2 id="productModalTitle">Ajouter un produit</h2>
+        <form id="productForm" enctype="multipart/form-data">
+            <input type="hidden" id="productId" name="id">
+            <label>Titre * <input type="text" name="name" required></label>
+            <label>Prix (€) * <input type="number" step="0.01" name="price" required></label>
+            <label>Quantité en stock <input type="number" name="stock_quantity" min="0" placeholder="Vide = illimité"></label>
+            <label>Description * <textarea name="description" rows="3" required></textarea></label>
+            <label>Catégorie
+                <input type="text" id="categoryInput" name="category" list="categorySuggestions" placeholder="Ex: Peluches, Accessoires…" autocomplete="off">
+                <span class="field-hint">Choisissez une suggestion ou tapez un nouveau nom.</span>
+            </label>
+            <datalist id="categorySuggestions">
+                {% for c in categories %}
+                <option value="{{ c.name }}"></option>
+                {% endfor %}
+            </datalist>
+            <label class="checkbox-label"><input type="checkbox" name="available" value="1" checked> Disponible</label>
+            <label class="checkbox-label"><input type="checkbox" name="display" value="1" checked> Afficher sur le site</label>
+            <label>Image <input type="file" name="image" accept="image/*"></label>
+            <button type="submit" class="btn-primary">Enregistrer</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API = '/api';
+
+async function api(method, url, body = null, isForm = false) {
+    const opts = { method, credentials: 'include' };
+    if (body) {
+        if (isForm) opts.body = body;
+        else { opts.headers = { 'Content-Type': 'application/json' }; opts.body = JSON.stringify(body); }
+    }
+    const r = await fetch(url, opts);
+    if (r.status === 401) { window.location = '/admin/login'; return null; }
+    return r.json ? await r.json().catch(() => null) : null;
+}
+
+function showProductModal(id = null) {
+    document.getElementById('productModal').classList.add('show');
+    document.getElementById('productModalTitle').textContent = id ? 'Modifier le produit' : 'Ajouter un produit';
+    document.getElementById('productId').value = id || '';
+    if (!id) {
+        document.getElementById('productForm').reset();
+        document.getElementById('categoryInput').value = '';
+        document.querySelector('#productForm [name="available"]').checked = true;
+        document.querySelector('#productForm [name="display"]').checked = true;
+    }
+}
+
+function closeProductModal() { document.getElementById('productModal').classList.remove('show'); }
+
+async function editProduct(id) {
+    const products = {{ products_data | tojson | safe }} || [];
+    const p = products.find(x => x.id === id);
+    if (!p) return;
+    showProductModal(id);
+    document.querySelector('#productForm [name="name"]').value = p.name;
+    document.querySelector('#productForm [name="description"]').value = p.description || '';
+    document.querySelector('#productForm [name="price"]').value = p.price ?? '';
+    document.querySelector('#productForm [name="stock_quantity"]').value =
+        p.stock_quantity !== null && p.stock_quantity !== undefined ? p.stock_quantity : '';
+    document.querySelector('#productForm [name="available"]').checked = p.available !== false;
+    document.querySelector('#productForm [name="display"]').checked = p.display !== false;
+    document.getElementById('categoryInput').value = p.category_name || '';
+}
+
+async function deleteProduct(id) {
+    if (!confirm('Supprimer ce produit ?')) return;
+    await api('DELETE', `${API}/products/${id}`);
+    location.reload();
+}
+
+document.getElementById('productForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('productId').value;
+    const form = e.target;
+    const fd = new FormData();
+    fd.append('name', form.name.value);
+    fd.append('description', form.description.value);
+    fd.append('price', form.price.value);
+    const stockVal = form.stock_quantity.value ? String(form.stock_quantity.value).trim() : '';
+    fd.append('stock_quantity', stockVal);
+    const catVal = document.getElementById('categoryInput').value.trim();
+    if (catVal) fd.append('category', catVal);
+    fd.append('available', form.available.checked ? 'true' : 'false');
+    fd.append('display', form.display.checked ? 'true' : 'false');
+    if (form.image.files[0]) fd.append('image', form.image.files[0]);
+    const url = id ? `${API}/products/${id}` : `${API}/products`;
+    const r = await fetch(url, { method: id ? 'PUT' : 'POST', body: fd, credentials: 'include' });
+    if (r.status === 401) { window.location = '/admin/login'; return; }
+    if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        showToast('Erreur: ' + (err.detail || r.statusText || 'Erreur serveur'), 'error');
+        return;
+    }
+    closeProductModal();
+    location.reload();
+};
+
+document.querySelector('.modal-close').onclick = closeProductModal;
+window.onclick = (e) => { if (e.target.classList.contains('modal')) e.target.classList.remove('show'); };
+</script>
+{% endblock %}

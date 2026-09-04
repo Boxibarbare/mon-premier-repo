@@ -1,0 +1,91 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Feedback - Admin Amour Crochet Garden{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <h1>Messages de contact</h1>
+    <p class="admin-welcome">Gérez les messages reçus via le formulaire de contact.</p>
+    <div class="feedback-filters">
+        <button class="btn-filter active" data-filter="all">Tous</button>
+        <button class="btn-filter" data-filter="unread">Non lus</button>
+        <button class="btn-filter" data-filter="read">Lus</button>
+    </div>
+    <div class="feedback-list" id="feedbackList">
+        {% for fb in feedback_list %}
+        <article class="feedback-card {% if not fb.lu %}unread{% endif %}" data-id="{{ fb.id }}" data-lu="{{ 'true' if fb.lu else 'false' }}">
+            <div class="feedback-header">
+                <strong>{{ fb.name }}</strong> — {{ fb.email }}
+                <span class="feedback-date">{{ fb.created_at_display }}</span>
+                {% if not fb.lu %}<span class="badge-new">Nouveau</span>{% endif %}
+            </div>
+            <p class="feedback-message">{{ fb.message }}</p>
+            <div class="feedback-actions">
+                {% if not fb.lu %}
+                <button class="btn-mark-read" onclick="markRead({{ fb.id }})">Marquer comme lu</button>
+                {% endif %}
+                <a href="mailto:{{ fb.email }}?subject=Re%3A%20Amour%20Crochet%20Garden" class="btn-reply">Répondre</a>
+                <button class="btn-delete" onclick="deleteFeedback({{ fb.id }})">Supprimer</button>
+            </div>
+        </article>
+        {% else %}
+        <p class="no-items">Aucun message pour le moment.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API = '/api';
+
+async function api(method, url) {
+    const r = await fetch(url, { method, credentials: 'include' });
+    if (r.status === 401) { window.location = '/admin/login'; return null; }
+    return r.json ? await r.json().catch(() => null) : null;
+}
+
+async function markRead(id) {
+    const res = await api('PATCH', `${API}/feedback/${id}/read`);
+    if (res) {
+        const card = document.querySelector(`.feedback-card[data-id="${id}"]`);
+        if (card) {
+            card.classList.remove('unread');
+            card.dataset.lu = 'true';
+            card.querySelector('.btn-mark-read')?.remove();
+            card.querySelector('.badge-new')?.remove();
+            applyFilter(document.querySelector('.btn-filter.active')?.dataset.filter || 'all');
+        }
+    }
+}
+
+async function deleteFeedback(id) {
+    if (!confirm('Supprimer ce message ?')) return;
+    const res = await api('DELETE', `${API}/feedback/${id}`);
+    if (res?.ok) {
+        document.querySelector(`.feedback-card[data-id="${id}"]`)?.remove();
+        const remaining = document.querySelectorAll('.feedback-card');
+        if (remaining.length === 0) {
+            document.getElementById('feedbackList').innerHTML = '<p class="no-items">Aucun message pour le moment.</p>';
+        }
+    }
+}
+
+function applyFilter(filter) {
+    document.querySelectorAll('.btn-filter').forEach(b => {
+        b.classList.toggle('active', b.dataset.filter === filter);
+    });
+    document.querySelectorAll('.feedback-card').forEach(card => {
+        const lu = card.dataset.lu === 'true';
+        let show = true;
+        if (filter === 'unread') show = !lu;
+        else if (filter === 'read') show = lu;
+        card.style.display = show ? 'block' : 'none';
+    });
+}
+
+document.querySelectorAll('.btn-filter').forEach(btn => {
+    btn.addEventListener('click', () => applyFilter(btn.dataset.filter));
+});
+</script>
+{% endblock %}

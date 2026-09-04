@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Événements - Amour Crochet Garden{% endblock %}
+
+{% block body_class %}page-events{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero-small">
+    <div class="container">
+        <h1 class="page-title">Nos Événements</h1>
+        <p class="page-subtitle">Retrouvez-nous aux brocantes, marchés et ateliers</p>
+    </div>
+</section>
+
+<section class="section section-events-list">
+    <div class="container">
+        <form method="get" action="/events" class="filters-inline">
+            <div class="filters-inner">
+                <select name="event_type">
+                    <option value="">Tous les types</option>
+                    {% for t in event_types %}
+                    <option value="{{ t }}" {% if filters.event_type == t %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+                <input type="date" name="date_from" value="{{ filters.date_from or '' }}" placeholder="Début">
+                <input type="date" name="date_to" value="{{ filters.date_to or '' }}" placeholder="Fin">
+                <input type="text" name="location" value="{{ filters.location or '' }}" placeholder="Lieu">
+                <button type="submit" class="btn btn-primary">Filtrer</button>
+            </div>
+        </form>
+
+        <div class="events-grid events-grid-list">
+            {% for event in events %}
+            <article class="event-card event-card-large">
+                {% if event.event_type_name %}<span class="event-type">{{ event.event_type_name }}</span>{% endif %}
+                <h3 class="event-card-title">{{ event.title }}</h3>
+                <div class="event-meta">
+                    <span class="event-date">{{ event.date_display }}</span>
+                    <span class="event-location">{{ event.location }}</span>
+                </div>
+                <div class="event-desc">{{ event.description_full }}</div>
+            </article>
+            {% else %}
+            <p class="empty-state empty-state-full">Aucun événement ne correspond à vos critères.</p>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

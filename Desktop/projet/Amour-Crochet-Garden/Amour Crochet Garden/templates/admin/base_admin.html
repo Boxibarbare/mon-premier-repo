@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin - Amour Crochet Garden{% endblock %}</title>
+    <link rel="icon" href="/static/img/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon-32.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/admin.css?v=3">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="admin-body">
+    <meta name="csrf-token" content="{{ csrf_token or '' }}">
+    <a href="#main" class="skip-link">Aller au contenu</a>
+    <aside class="admin-sidebar" role="navigation">
+        <div class="sidebar-header">
+            <a href="/" class="sidebar-logo">
+                <img src="/static/img/logo.png" alt="" width="28" height="28">
+                <span>Amour Crochet</span>
+            </a>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/admin/dashboard" class="nav-item">Dashboard</a>
+            <a href="/admin/orders" class="nav-item">Commandes</a>
+            <a href="/admin/products" class="nav-item">Produits</a>
+            <a href="/admin/events" class="nav-item">Événements</a>
+            <a href="/admin/feedback" class="nav-item">Feedback</a>
+            <a href="/admin/referrals" class="nav-item">Parrainage</a>
+            <a href="/admin/settings" class="nav-item">Paramètres</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/" class="nav-item nav-item--out" target="_blank" rel="noopener noreferrer">Voir le site</a>
+            <form action="/admin/logout" method="post" class="logout-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+                <button type="submit" class="nav-item nav-item--out logout-btn">Déconnexion</button>
+            </form>
+        </div>
+    </aside>
+    <div class="admin-wrap">
+        <main class="admin-main" id="main">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+    {% block extra_js %}{% endblock %}
+    <script>
+        (function() {
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+            const originalFetch = window.fetch.bind(window);
+            window.fetch = function(input, init) {
+                init = init || {};
+                const method = (init.method || 'GET').toUpperCase();
+                if (method !== 'GET' && method !== 'HEAD' && csrfToken) {
+                    const headers = new Headers(init.headers || {});
+                    if (!headers.has('X-CSRF-Token')) {
+                        headers.set('X-CSRF-Token', csrfToken);
+                    }
+                    init.headers = headers;
+                }
+                return originalFetch(input, init);
+            };
+        })();
+        function showToast(message, type) {
+            type = type || 'success';
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast toast-' + type;
+            toast.textContent = message;
+            container.appendChild(toast);
+            requestAnimationFrame(function() { toast.classList.add('toast-show'); });
+            setTimeout(function() {
+                toast.classList.remove('toast-show');
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 2500);
+        }
+        document.querySelectorAll('.nav-item').forEach(function(a) {
+            if (a.getAttribute('href') === window.location.pathname) a.classList.add('nav-item--active');
+        });
+    </script>
+</body>
+</html>

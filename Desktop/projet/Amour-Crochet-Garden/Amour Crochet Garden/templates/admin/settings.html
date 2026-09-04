@@ -1,0 +1,146 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Paramètres - Admin Amour Crochet Garden{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <h1>Paramètres</h1>
+    <p class="settings-desc">Configurez les informations affichées sur le site.</p>
+    <form id="settingsForm" class="settings-form">
+        <label>Email de contact (pour mailto et liens)
+            <input type="email" name="contact_email" value="{{ settings.contact_email or '' }}" required>
+        </label>
+
+        <h3 class="settings-section">Réseaux sociaux</h3>
+        <p class="settings-desc">Ajoutez Instagram, TikTok ou tout autre réseau. Ils apparaîtront dans le pied de page et la page d'accueil.</p>
+        <div class="social-presets">
+            <button type="button" class="btn-secondary" onclick="addPreset('Instagram', 'https://instagram.com/')">+ Instagram</button>
+            <button type="button" class="btn-secondary" onclick="addPreset('TikTok', 'https://www.tiktok.com/@')">+ TikTok</button>
+            <button type="button" class="btn-secondary" onclick="addPreset('Facebook', 'https://facebook.com/')">+ Facebook</button>
+            <button type="button" class="btn-secondary" onclick="addPreset('Pinterest', 'https://pinterest.com/')">+ Pinterest</button>
+        </div>
+        <div id="socialLinksContainer" class="social-links-admin"></div>
+        <button type="button" class="btn-secondary" onclick="addSocialLink()">+ Autre réseau</button>
+
+        <label>Texte d'introduction (présentation entreprise)
+            <textarea name="intro_text" rows="5">{{ settings.intro_text or '' }}</textarea>
+        </label>
+        <button type="submit" class="btn-primary">Enregistrer</button>
+    </form>
+
+    <section class="settings-email-test">
+        <h3 class="settings-section">E-mails de commande</h3>
+        {% if emails_mocked %}
+        <p class="settings-desc settings-info">
+            Mode dev : les e-mails de commande sont simulés et enregistrés dans
+            <code>logs/emails/</code>. Pour recevoir de vrais e-mails en local, ajoutez
+            <code>MOCK_EMAILS=false</code> dans votre <code>.env</code>.
+        </p>
+        {% else %}
+        <p class="settings-desc settings-info">
+            Les e-mails de commande sont envoyés via SMTP
+            {% if smtp_configured %}(configuré){% else %} — <strong>SMTP incomplet</strong>{% endif %}.
+        </p>
+        {% endif %}
+        <p class="settings-desc">Envoyez un e-mail de test (confirmation client + alerte admin) :</p>
+        <form id="testEmailForm" class="settings-form settings-form-inline">
+            <label>
+                Adresse de test
+                <input type="email" id="testEmailTo" value="{{ settings.contact_email or '' }}" required>
+            </label>
+            <button type="submit" class="btn-secondary" {% if not smtp_configured %}disabled{% endif %}>
+                Envoyer un e-mail test
+            </button>
+        </form>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API = '/api';
+let socialLinks = {{ settings.social_links_parsed | tojson | safe }} || [];
+
+function renderSocialLinks() {
+    const container = document.getElementById('socialLinksContainer');
+    container.innerHTML = socialLinks.map((link, i) => `
+        <div class="social-link-row" data-idx="${i}">
+            <input type="text" name="social_name_${i}" value="${(link.name || '').replace(/"/g, '&quot;')}" placeholder="Nom (ex: Instagram)">
+            <input type="url" name="social_url_${i}" value="${(link.url || '').replace(/"/g, '&quot;')}" placeholder="https://...">
+            <button type="button" class="btn-delete-small" onclick="removeSocialLink(${i})">Supprimer</button>
+        </div>
+    `).join('') || '<p class="settings-desc">Aucun réseau pour le moment.</p>';
+}
+
+function addSocialLink() {
+    socialLinks.push({ name: '', url: '' });
+    renderSocialLinks();
+}
+
+function addPreset(name, urlPrefix) {
+    const exists = socialLinks.some(l => (l.name || '').toLowerCase() === name.toLowerCase());
+    if (exists) {
+        showToast(name + ' est déjà dans la liste.', 'error');
+        return;
+    }
+    socialLinks.push({ name, url: urlPrefix });
+    renderSocialLinks();
+}
+
+function removeSocialLink(idx) {
+    socialLinks.splice(idx, 1);
+    renderSocialLinks();
+}
+
+renderSocialLinks();
+
+document.getElementById('settingsForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const links = [];
+    form.querySelectorAll('.social-link-row').forEach((row) => {
+        const name = row.querySelector('input[type="text"]')?.value?.trim() || '';
+        const url = row.querySelector('input[type="url"]')?.value?.trim() || '';
+        if (name && url) links.push({ name, url });
+    });
+
+    const data = {
+        contact_email: form.contact_email.value,
+        email: form.contact_email.value,
+        intro_text: form.intro_text.value,
+        social_links: JSON.stringify(links)
+    };
+
+    const r = await fetch(`${API}/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'include',
+    });
+    if (r.status === 401) { window.location = '/admin/login'; return; }
+    socialLinks = links;
+    renderSocialLinks();
+    showToast('Paramètres enregistrés.');
+};
+
+document.getElementById('testEmailForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('testEmailTo')?.value?.trim();
+    if (!email) return;
+
+    const r = await fetch(`${API}/test-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+        credentials: 'include',
+    });
+    if (r.status === 401) { window.location = '/admin/login'; return; }
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+        showToast(data.detail || 'Échec envoi e-mail test.', 'error');
+        return;
+    }
+    showToast(data.hint || 'E-mails test envoyés.');
+});
+</script>
+{% endblock %}

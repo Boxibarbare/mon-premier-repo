@@ -1,0 +1,326 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Dashboard - Admin Amour Crochet Garden{% endblock %}
+
+{% block content %}
+<div class="admin-page dashboard-page">
+    <div class="dashboard-header">
+        <div>
+            <h1>Dashboard</h1>
+            <p class="admin-welcome">Vue d’ensemble de l’activité boutique.</p>
+        </div>
+    </div>
+
+    <section class="kpi-grid" aria-label="Indicateurs clés">
+        <a href="/admin/orders" class="kpi-card kpi-accent">
+            <span class="kpi-label">Chiffre d’affaires</span>
+            <span class="kpi-value">{{ "%.2f"|format(stats.revenue_total) }} €</span>
+            <span class="kpi-hint">{{ "%.2f"|format(stats.revenue_30d) }} € sur 30 jours</span>
+        </a>
+        <a href="/admin/orders" class="kpi-card">
+            <span class="kpi-label">Commandes payées</span>
+            <span class="kpi-value">{{ stats.orders_paid }}</span>
+            <span class="kpi-hint">{{ stats.orders_pending }} en attente · {{ stats.orders_total }} au total</span>
+        </a>
+        <div class="kpi-card">
+            <span class="kpi-label">Panier moyen</span>
+            <span class="kpi-value">{{ "%.2f"|format(stats.aov) }} €</span>
+            <span class="kpi-hint">Sur les commandes payées</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Taux de conversion*</span>
+            <span class="kpi-value">{{ stats.conversion_rate }} %</span>
+            <span class="kpi-hint">Commandes / pages vues</span>
+        </div>
+        <a href="/admin/feedback" class="kpi-card {% if stats.feedback_unread %}kpi-warn{% endif %}">
+            <span class="kpi-label">Messages</span>
+            <span class="kpi-value">{{ stats.feedback_unread }}</span>
+            <span class="kpi-hint">non lus · {{ stats.feedback_total }} au total</span>
+        </a>
+        <a href="/admin/products" class="kpi-card {% if stats.low_stock %}kpi-warn{% endif %}">
+            <span class="kpi-label">Stock bas</span>
+            <span class="kpi-value">{{ stats.low_stock }}</span>
+            <span class="kpi-hint">≤ 3 unités · {{ stats.products_count }} produits</span>
+        </a>
+        <div class="kpi-card">
+            <span class="kpi-label">Visiteurs</span>
+            <span class="kpi-value">{{ stats.visitors_total }}</span>
+            <span class="kpi-hint">{{ stats.page_views_total }} pages vues</span>
+        </div>
+        <a href="/admin/events" class="kpi-card">
+            <span class="kpi-label">Événements</span>
+            <span class="kpi-value">{{ stats.events_count }}</span>
+            <span class="kpi-hint">Publiés / planifiés</span>
+        </a>
+    </section>
+    <p class="kpi-footnote">* Indicateur approximatif (pages vues avec consentement analytics).</p>
+
+    <div class="dashboard-columns">
+        <section class="dash-panel">
+            <div class="dash-panel-head">
+                <h2>CA &amp; commandes — 14 jours</h2>
+            </div>
+            <canvas id="revenueChart" class="dash-chart" width="720" height="280" aria-label="Graphique chiffre d'affaires"></canvas>
+            <div class="chart-legend">
+                <span><i class="legend-swatch legend-revenue"></i> CA (€)</span>
+                <span><i class="legend-swatch legend-orders"></i> Commandes</span>
+            </div>
+        </section>
+
+        <section class="dash-panel">
+            <div class="dash-panel-head">
+                <h2>Répartition des commandes</h2>
+            </div>
+            <div class="status-bars" id="statusBars"
+                 data-paid="{{ stats.status_breakdown.paid }}"
+                 data-pending="{{ stats.status_breakdown.pending }}"
+                 data-failed="{{ stats.status_breakdown.failed }}">
+                <div class="status-row">
+                    <span>Payées</span>
+                    <div class="status-track"><div class="status-fill status-paid" id="barPaid"></div></div>
+                    <strong>{{ stats.status_breakdown.paid }}</strong>
+                </div>
+                <div class="status-row">
+                    <span>En attente</span>
+                    <div class="status-track"><div class="status-fill status-pending" id="barPending"></div></div>
+                    <strong>{{ stats.status_breakdown.pending }}</strong>
+                </div>
+                <div class="status-row">
+                    <span>Échouées</span>
+                    <div class="status-track"><div class="status-fill status-failed" id="barFailed"></div></div>
+                    <strong>{{ stats.status_breakdown.failed }}</strong>
+                </div>
+            </div>
+            <canvas id="viewsChart" class="dash-chart dash-chart-sm" width="720" height="160" aria-label="Graphique pages vues"></canvas>
+            <p class="chart-caption">Pages vues (14 jours)</p>
+        </section>
+    </div>
+
+    <div class="dashboard-columns">
+        <section class="dash-panel">
+            <div class="dash-panel-head">
+                <h2>Meilleures ventes</h2>
+                <a href="/admin/orders" class="dash-link">Commandes</a>
+            </div>
+            {% if stats.top_products %}
+            <ul class="top-list">
+                {% for p in stats.top_products %}
+                <li>
+                    <div>
+                        <strong>{{ p.name }}</strong>
+                        <span>{{ p.quantity }} vendu{{ 's' if p.quantity > 1 else '' }}</span>
+                    </div>
+                    <em>{{ "%.2f"|format(p.revenue) }} €</em>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="no-items">Pas encore de ventes enregistrées.</p>
+            {% endif %}
+        </section>
+
+        <section class="dash-panel">
+            <div class="dash-panel-head">
+                <h2>Dernières commandes</h2>
+                <a href="/admin/orders" class="dash-link">Tout voir</a>
+            </div>
+            {% if stats.recent_orders %}
+            <ul class="recent-orders">
+                {% for o in stats.recent_orders %}
+                <li>
+                    <div>
+                        <strong>{{ o.reference }}</strong>
+                        <span>{{ o.customer }} · {{ o.date }}</span>
+                    </div>
+                    <div class="recent-meta">
+                        <span class="order-badge order-badge-{{ o.status }}">{{ o.status }}</span>
+                        <em>{{ "%.2f"|format(o.total) }} €</em>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="no-items">Aucune commande pour le moment.</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <section class="dash-panel">
+        <div class="dash-panel-head">
+            <h2>Parrainage</h2>
+            <a href="/admin/referrals" class="dash-link">Gérer</a>
+        </div>
+        <div class="referral-stats-grid">
+            {% for ref in stats.referral_stats %}
+            <div class="referral-stat-card">
+                <span class="referral-name">{{ ref.name }}</span>
+                <span class="referral-visits">{{ ref.visits }}</span> visiteur(s)
+            </div>
+            {% else %}
+            <p class="no-items">Aucun parrain enregistré. <a href="/admin/referrals">Créer des liens</a></p>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const series = {{ stats.chart_series | tojson }};
+
+    function drawBars(canvasId, values, color, opts) {
+        opts = opts || {};
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !series.length) return;
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const cssW = canvas.clientWidth || canvas.width;
+        const cssH = opts.height || 280;
+        canvas.width = cssW * dpr;
+        canvas.height = cssH * dpr;
+        canvas.style.height = cssH + 'px';
+        ctx.scale(dpr, dpr);
+
+        const pad = { t: 24, r: 12, b: 36, l: 40 };
+        const w = cssW - pad.l - pad.r;
+        const h = cssH - pad.t - pad.b;
+        const max = Math.max.apply(null, values.concat([1]));
+        const gap = 6;
+        const barW = Math.max(4, (w / values.length) - gap);
+
+        ctx.clearRect(0, 0, cssW, cssH);
+        // grid
+        ctx.strokeStyle = '#2d2d30';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+            const y = pad.t + (h * i / 4);
+            ctx.beginPath();
+            ctx.moveTo(pad.l, y);
+            ctx.lineTo(pad.l + w, y);
+            ctx.stroke();
+            ctx.fillStyle = '#71717a';
+            ctx.font = '11px Inter, sans-serif';
+            ctx.textAlign = 'right';
+            const label = opts.money
+                ? (max * (1 - i / 4)).toFixed(0)
+                : String(Math.round(max * (1 - i / 4)));
+            ctx.fillText(label, pad.l - 8, y + 3);
+        }
+
+        values.forEach(function(v, i) {
+            const x = pad.l + i * (barW + gap);
+            const bh = (v / max) * h;
+            const y = pad.t + h - bh;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            const r = 4;
+            ctx.moveTo(x, y + r);
+            ctx.arcTo(x, y, x + barW, y, r);
+            ctx.arcTo(x + barW, y, x + barW, y + bh, r);
+            ctx.lineTo(x + barW, y + bh);
+            ctx.lineTo(x, y + bh);
+            ctx.closePath();
+            ctx.fill();
+
+            if (i % 2 === 0 || values.length <= 10) {
+                ctx.fillStyle = '#71717a';
+                ctx.font = '10px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(series[i].label, x + barW / 2, cssH - 12);
+            }
+        });
+    }
+
+    function drawCombo() {
+        const canvas = document.getElementById('revenueChart');
+        if (!canvas || !series.length) return;
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const cssW = canvas.clientWidth || 720;
+        const cssH = 280;
+        canvas.width = cssW * dpr;
+        canvas.height = cssH * dpr;
+        canvas.style.height = cssH + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const pad = { t: 28, r: 16, b: 40, l: 48 };
+        const w = cssW - pad.l - pad.r;
+        const h = cssH - pad.t - pad.b;
+        const revenues = series.map(function(s) { return s.revenue || 0; });
+        const orders = series.map(function(s) { return s.orders || 0; });
+        const maxR = Math.max.apply(null, revenues.concat([1]));
+        const maxO = Math.max.apply(null, orders.concat([1]));
+        const gap = 8;
+        const barW = Math.max(6, (w / series.length) - gap);
+
+        ctx.clearRect(0, 0, cssW, cssH);
+        ctx.strokeStyle = '#2d2d30';
+        for (let i = 0; i <= 4; i++) {
+            const y = pad.t + (h * i / 4);
+            ctx.beginPath();
+            ctx.moveTo(pad.l, y);
+            ctx.lineTo(pad.l + w, y);
+            ctx.stroke();
+            ctx.fillStyle = '#71717a';
+            ctx.font = '11px Inter, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText((maxR * (1 - i / 4)).toFixed(0), pad.l - 8, y + 3);
+        }
+
+        series.forEach(function(s, i) {
+            const x = pad.l + i * (barW + gap);
+            const bh = ((s.revenue || 0) / maxR) * h;
+            const y = pad.t + h - bh;
+            ctx.fillStyle = 'rgba(184, 134, 74, 0.85)';
+            ctx.fillRect(x, y, barW * 0.7, bh);
+
+            const oy = pad.t + h - ((s.orders || 0) / maxO) * h;
+            if (i === 0) {
+                ctx.beginPath();
+                ctx.moveTo(x + barW * 0.35, oy);
+            } else {
+                ctx.lineTo(x + barW * 0.35, oy);
+            }
+        });
+        ctx.strokeStyle = '#4ade80';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        series.forEach(function(s, i) {
+            const x = pad.l + i * (barW + gap) + barW * 0.35;
+            const oy = pad.t + h - ((s.orders || 0) / maxO) * h;
+            ctx.fillStyle = '#4ade80';
+            ctx.beginPath();
+            ctx.arc(x, oy, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            if (i % 2 === 0) {
+                ctx.fillStyle = '#71717a';
+                ctx.font = '10px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(s.label, x, cssH - 14);
+            }
+        });
+    }
+
+    drawCombo();
+    drawBars('viewsChart', series.map(function(s) { return s.views || 0; }), 'rgba(161, 161, 170, 0.7)', { height: 160 });
+
+    const total = {{ stats.orders_total or 0 }};
+    function setBar(id, value) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const pct = total > 0 ? Math.max(4, (value / total) * 100) : 0;
+        el.style.width = (value ? pct : 0) + '%';
+    }
+    setBar('barPaid', {{ stats.status_breakdown.paid }});
+    setBar('barPending', {{ stats.status_breakdown.pending }});
+    setBar('barFailed', {{ stats.status_breakdown.failed }});
+
+    window.addEventListener('resize', function() {
+        drawCombo();
+        drawBars('viewsChart', series.map(function(s) { return s.views || 0; }), 'rgba(161, 161, 170, 0.7)', { height: 160 });
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Commandes - Admin Amour Crochet Garden{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <div class="orders-toolbar">
+        <div>
+            <h1>Commandes</h1>
+            <p class="admin-welcome">Commandes SumUp — confirmation e-mail client + alerte admin.</p>
+        </div>
+        <div class="orders-actions">
+            <label class="orders-select-all">
+                <input type="checkbox" id="selectAllOrders"> Tout sélectionner
+            </label>
+            <button type="button" class="btn-secondary" id="deleteSelectedBtn" disabled>Supprimer la sélection</button>
+        </div>
+    </div>
+
+    <div class="orders-list">
+        {% for order in orders %}
+        <article class="order-card {% if order.status == 'paid' %}order-paid{% endif %}" data-order-id="{{ order.id }}">
+            <div class="order-header">
+                <div class="order-header-left">
+                    <label class="order-check">
+                        <input type="checkbox" class="order-checkbox" value="{{ order.id }}">
+                    </label>
+                    <div>
+                        <strong>{{ order.reference }}</strong>
+                        <span class="order-badge order-badge-{{ order.status }}">{{ order.status_label }}</span>
+                    </div>
+                </div>
+                <div class="order-header-right">
+                    <span class="order-date">{{ order.created_at_display }}</span>
+                    <button type="button" class="btn-delete-small order-delete-btn" data-id="{{ order.id }}" data-ref="{{ order.reference }}">Supprimer</button>
+                </div>
+            </div>
+            <div class="order-meta">
+                <div><strong>{{ order.customer_first_name or '' }} {{ order.customer_last_name or order.customer_name }}</strong></div>
+                <div><a href="mailto:{{ order.customer_email }}">{{ order.customer_email }}</a></div>
+                {% if order.customer_phone %}<div>{{ order.customer_phone }}</div>{% endif %}
+                {% if order.shipping_address %}
+                <div class="order-address">
+                    {{ order.shipping_address }}<br>
+                    {{ order.shipping_postal_code }} {{ order.shipping_city }}<br>
+                    {{ order.shipping_country }}
+                </div>
+                {% endif %}
+            </div>
+            <ul class="order-items">
+                {% for item in order.line_items %}
+                <li>{{ item.product_name }} × {{ item.quantity }} — {{ "%.2f"|format(item.unit_price * item.quantity) }} €</li>
+                {% endfor %}
+            </ul>
+            <div class="order-totals">
+                <div>Sous-total : {{ "%.2f"|format(order.subtotal) }} €</div>
+                <div>
+                    Livraison :
+                    {% if order.shipping_fee > 0 %}{{ "%.2f"|format(order.shipping_fee) }} €{% else %}offerte{% endif %}
+                </div>
+                <div class="order-total">Total : {{ "%.2f"|format(order.total) }} €</div>
+            </div>
+            <div class="order-flags">
+                {% if order.customer_email_sent %}<span class="order-flag">Mail client envoyé</span>{% else %}<span class="order-flag order-flag-warn">Mail client non envoyé</span>{% endif %}
+                {% if order.admin_email_sent %}<span class="order-flag">Mail admin envoyé</span>{% else %}<span class="order-flag order-flag-warn">Mail admin non envoyé</span>{% endif %}
+            </div>
+        </article>
+        {% else %}
+        <p class="no-items">Aucune commande pour le moment.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const API = '/api';
+    const selectAll = document.getElementById('selectAllOrders');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+
+    function selectedIds() {
+        return Array.from(document.querySelectorAll('.order-checkbox:checked')).map(function(el) {
+            return Number(el.value);
+        });
+    }
+
+    function refreshBulkState() {
+        const ids = selectedIds();
+        deleteSelectedBtn.disabled = ids.length === 0;
+        deleteSelectedBtn.textContent = ids.length
+            ? 'Supprimer (' + ids.length + ')'
+            : 'Supprimer la sélection';
+    }
+
+    selectAll?.addEventListener('change', function() {
+        document.querySelectorAll('.order-checkbox').forEach(function(cb) {
+            cb.checked = selectAll.checked;
+        });
+        refreshBulkState();
+    });
+
+    document.querySelectorAll('.order-checkbox').forEach(function(cb) {
+        cb.addEventListener('change', refreshBulkState);
+    });
+
+    async function deleteIds(ids) {
+        if (!ids.length) return;
+        const label = ids.length === 1 ? 'cette commande' : (ids.length + ' commandes');
+        if (!confirm('Supprimer définitivement ' + label + ' ?')) return;
+
+        if (ids.length === 1) {
+            const r = await fetch(API + '/orders/' + ids[0], {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+            if (r.status === 401) { window.location = '/admin/login'; return; }
+            if (r.status === 403) { showToast('Session expirée — rechargez la page.', 'error'); return; }
+            if (!r.ok) { showToast('Échec de la suppression.', 'error'); return; }
+        } else {
+            const r = await fetch(API + '/orders/delete-bulk', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: ids }),
+            });
+            if (r.status === 401) { window.location = '/admin/login'; return; }
+            if (r.status === 403) { showToast('Session expirée — rechargez la page.', 'error'); return; }
+            if (!r.ok) { showToast('Échec de la suppression.', 'error'); return; }
+        }
+        showToast('Commande(s) supprimée(s).');
+        ids.forEach(function(id) {
+            document.querySelector('.order-card[data-order-id="' + id + '"]')?.remove();
+        });
+        if (!document.querySelector('.order-card')) {
+            document.querySelector('.orders-list').innerHTML = '<p class="no-items">Aucune commande pour le moment.</p>';
+        }
+        refreshBulkState();
+    }
+
+    deleteSelectedBtn?.addEventListener('click', function() {
+        deleteIds(selectedIds());
+    });
+
+    document.querySelectorAll('.order-delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            deleteIds([Number(btn.getAttribute('data-id'))]);
+        });
+    });
+})();
+</script>
+{% endblock %}
